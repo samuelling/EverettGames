@@ -33,18 +33,24 @@
   AU.setMuted(!!st.muted);
 
   // ---------------- curriculum level ----------------
-  const K_YEAR = 2026;
+  // Kindergarten school year comes from the grown-up setup (birthday → grade, saved on this device).
+  // Fallback if setup was skipped: Everett's Kindergarten year, 2026–27.
+  const kYear = () => (window.EverettProfile && EverettProfile.kYear()) || 2026;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const schoolYear = (d) => (d.getMonth() >= 8 ? d.getFullYear() : d.getFullYear() - 1);
   function baseLevel(d = new Date()) {
-    const sy = schoolYear(d), grade = sy - K_YEAR + st.gradeOffset;
+    const sy = schoolYear(d), grade = sy - kYear() + st.gradeOffset;
     const months = (d - new Date(sy, 8, 1)) / (30.44 * 864e5);
     const prog = clamp(months * 1.05, 0, 9.6);
     return { grade, level: grade * 10 + prog };
   }
   // (in later grades a fresh start begins one step behind the calendar instead)
   const anchorOffset = () => (baseLevel().grade <= 0 ? clamp(START_LEVEL - baseLevel().level, -6, 0) : -1);
-  if (!st.stair.anchored) { st.stair.offset = anchorOffset(); st.stair.anchored = true; }
+  // (re)anchor the staircase on first run, or if the grown-up changed the grade setting
+  function ensureAnchor() {
+    if (!st.stair.anchored || st.stair.kYear !== kYear()) { st.stair = freshStair(); st.stair.offset = anchorOffset(); st.stair.anchored = true; st.stair.kYear = kYear(); save(); }
+  }
+  ensureAnchor();
   const effLevel = () => clamp(baseLevel().level + st.stair.offset, 0, 60);
   const gradeName = (g) => (g < 0 ? 'Pre-K' : g === 0 ? 'Kindergarten' : 'Grade ' + g);
   function stairUpdate(ok) {
@@ -600,6 +606,8 @@
       <p><b>Grade (from the date):</b> ${gradeName(b.grade)}${st.gradeOffset ? ` (adjusted ${st.gradeOffset > 0 ? '+' : ''}${st.gradeOffset})` : ''} ·
          <b>curriculum level</b> ${b.level.toFixed(1)} · <b>staircase</b> ${s.offset >= 0 ? '+' : ''}${s.offset.toFixed(2)} (step ${s.step}, ${s.rev} reversals) ·
          <b>playing at level ${L.toFixed(1)}</b> (${gradeName(Math.floor(L / 10))}, step ${Math.floor(L % 10) + 1} of 10)</p>
+      <p><b>Grade setting:</b> ${EverettProfile.kYear() ? `from the grown-up setup (Kindergarten in ${kYear()}–${(kYear() + 1) % 100})` : 'not set up on this device — using Kindergarten in 2026–27'}
+        <button class="pbtn" id="pProfile">Change birthday / grade</button></p>
       <p><b>Right now it practises:</b> ${active || '—'}</p>
       <p><b>Rounds played:</b> ${st.rounds}${acc != null ? ` · first-try accuracy, last ${recent.length} rounds: ${acc}% (the staircase aims for ~79%)` : ''}</p>
       <table><tr><th>Skill</th><th>First try</th><th></th></tr>${rows || '<tr><td colspan="3">No answers yet</td></tr>'}</table>
@@ -608,14 +616,17 @@
       <p><button class="pbtn" id="pReset">Restart the staircase</button><button class="pbtn" id="pWipe">Erase all progress</button><button class="pbtn" id="pClose">Close</button></p>
       <p style="color:#667;max-width:720px">How it works: the level follows the calendar (Kindergarten in 2026–27, a new grade every September, about one step per month), and a 3-down/1-up staircase nudges it up after three first-try answers in a row and down after any miss, settling around 79% correct.</p>`;
     p.querySelectorAll('[data-g]').forEach((btn) => btn.addEventListener('click', () => { const g = +btn.dataset.g; st.gradeOffset = g === 0 ? 0 : st.gradeOffset + g; save(); openParent(); }));
-    const reanchor = () => { st.stair.offset = anchorOffset(); st.stair.anchored = true; };
+    const reanchor = () => { st.stair.offset = anchorOffset(); st.stair.anchored = true; st.stair.kYear = kYear(); };
     p.querySelector('#pReset').addEventListener('click', () => { st.stair = freshStair(); reanchor(); save(); openParent(); });
     p.querySelector('#pWipe').addEventListener('click', () => { if (confirm('Erase all progress for ' + subject.title + '?')) { st = fresh(); reanchor(); save(); openParent(); } });
     p.querySelector('#pClose').addEventListener('click', () => show('title'));
+    p.querySelector('#pProfile').addEventListener('click', () => EverettProfile.open({ onDone: () => { ensureAnchor(); openParent(); } }));
     show('parent');
   }
 
   show('title');
+  // opened directly (not inside the console) on a device with no setup yet: ask here
+  if (window.parent === window && EverettProfile.needsSetup()) EverettProfile.open({ first: true, onDone: () => ensureAnchor() });
   // test hooks (automated playtests)
   window.__learn = {
     force(id, L) { // render one specific skill (for playtests)

@@ -63,8 +63,16 @@ sticker for the shared sticker book.
   tiles, missing vowels, then sh/ch/th, blends, silent-e, vowel teams, fill-in-the-blank
   sentences, opposites, compound words, short stories with questions, prefixes and suffixes.
 
+**Grown-up setup.** The first time the console opens on a device, it asks a grown-up for
+the child's birthday. It works out the grade (turning 5 by Sept 1 means Kindergarten that
+year), and the grown-up can correct it. Only the resulting Kindergarten school year is
+saved, in this browser on this device. The birthday is not kept, it is never sent
+anywhere, and it is used only to set where the learning games start. Hold the ⚙︎ on the
+console for 2 s to change or erase it. If setup is skipped, the games assume Kindergarten
+in 2026–27.
+
 **Difficulty = calendar + staircase.**
-- **Calendar:** Kindergarten is the 2026–27 school year. Each September 1 starts a new
+- **Calendar:** the Kindergarten year comes from the grown-up setup (2026–27 for Everett). Each September 1 starts a new
   grade, and within a year the level rises about one step a month (10 steps per grade).
 - **Staircase:** a transformed 3-down/1-up rule on first-try answers. Three right in a row
   makes it one step harder, and any miss makes it one step easier, which settles at about

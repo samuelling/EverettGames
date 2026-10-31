@@ -182,6 +182,10 @@
   .play.ready { animation: pulse .6s ease-in-out infinite alternate; background: #52d273; }
   .mute { width: 56px; height: 56px; background: #ffd23f; }
   .mute .ico svg { width: 28px; height: 28px; }
+  .gear { width: 44px; height: 44px; background: #b9f5c9; opacity: .8; }
+  .gear .ico svg { width: 24px; height: 24px; }
+  .gear.holding .ring circle { transition-duration: 2s; }
+  body.playing .gear { display: none; }
   /* hold-to-press buttons (mute, eject) fill a ring so a stray tap does nothing */
   .round { position: relative; }
   .round .ico { display: grid; place-items: center; pointer-events: none; }
@@ -242,6 +246,7 @@
     <div class="dpad" aria-hidden="true"></div>
     <div class="speaker" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="btns">
+      <button class="round gear" id="gear" aria-label="Grown-up settings (hold)"><span class="ico"><svg viewBox="0 0 24 24"><path fill="#1d1b2f" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3h-4l-.4 2.9a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1L11 21h4l.4-2.9a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM13 15.5A3.5 3.5 0 1 1 16.5 12 3.5 3.5 0 0 1 13 15.5z"/></svg></span><svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/></svg></button>
       <button class="round mute" id="mute" aria-label="Sound on or off (hold)"><span class="ico"></span><svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/></svg></button>
       <button class="round play" id="play" aria-label="Play"><span class="ico"><svg viewBox="0 0 40 40"><path d="M8 4 L36 20 L8 36 Z" fill="#fff" stroke="#1d1b2f" stroke-width="4" stroke-linejoin="round"/></svg></span><svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/></svg></button>
     </div>
@@ -249,6 +254,7 @@
 </main>
 <div class="flash" id="flash"></div>
 
+<script src="shared/profile.js"></script>
 <script>
 'use strict';
 // ------------------------------------------------------------------
@@ -518,6 +524,10 @@ function lockZoom(doc, multiTouch) {
   if (multiTouch) doc.addEventListener('touchmove', (e) => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) stop(e); }, { passive: false });
 }
 lockZoom(document, true);
+
+// ---------- grown-up setup: asked once per device; hold the gear (2 s) to change it ----------
+holdable(document.getElementById('gear'), 2000, () => EverettProfile.open({}));
+if (EverettProfile.needsSetup()) EverettProfile.open({ first: true });
 drawMute();
 
 // keyboard: arrows to choose, Enter to play
