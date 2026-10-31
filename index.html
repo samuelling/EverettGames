@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Everett Games">
@@ -23,6 +23,9 @@
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; min-height: 100%; }
+  /* no double-tap or pinch zoom from little fingers */
+  html { touch-action: pan-x pan-y; overscroll-behavior: none; -webkit-text-size-adjust: 100%; }
+  body { -webkit-touch-callout: none; overscroll-behavior: none; }
   body {
     font-family: var(--font);
     color: var(--ink);
@@ -172,10 +175,16 @@
   }
   .round:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--ink); }
   .play { width: 96px; height: 96px; background: #ff4d6d; }
-  .play svg { width: 44px; height: 44px; margin-left: 6px; }
+  .play .ico svg { width: 44px; height: 44px; margin-left: 6px; }
   .play.ready { animation: pulse .6s ease-in-out infinite alternate; background: #52d273; }
   .mute { width: 56px; height: 56px; background: #ffd23f; }
-  .mute svg { width: 28px; height: 28px; }
+  .mute .ico svg { width: 28px; height: 28px; }
+  /* hold-to-press buttons (mute, eject) fill a ring so a stray tap does nothing */
+  .round { position: relative; }
+  .round .ico { display: grid; place-items: center; pointer-events: none; }
+  .round .ring { position: absolute; left: -12px; top: -12px; width: calc(100% + 24px); height: calc(100% + 24px); transform: rotate(-90deg); pointer-events: none; overflow: visible; }
+  .round .ring circle { fill: none; stroke: #fff; stroke-width: 8; stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; opacity: 0; filter: drop-shadow(0 0 2px #1d1b2f); }
+  .round.holding .ring circle { opacity: 1; stroke-dashoffset: 0; transition: stroke-dashoffset .8s linear; }
   .round:focus-visible, .cart:focus-visible .shell { outline: 5px solid #fff; outline-offset: 3px; }
 
   /* ---------- playing: the game runs inside the console's screen ---------- */
@@ -201,7 +210,7 @@
   body.playing .controls { margin-top: 10px; }
   body.playing .dpad { transform: scale(.6); margin: -18px; }
   body.playing .play { width: 66px; height: 66px; }
-  body.playing .play svg { width: 32px; height: 32px; margin-left: 0; }
+  body.playing .play .ico svg { width: 32px; height: 32px; margin-left: 0; }
   body.playing .mute { width: 46px; height: 46px; }
   .play.eject { background: #ff8c2b; animation: none; }
 
@@ -230,10 +239,8 @@
     <div class="dpad" aria-hidden="true"></div>
     <div class="speaker" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="btns">
-      <button class="round mute" id="mute" aria-label="Sound on or off"></button>
-      <button class="round play" id="play" aria-label="Play">
-        <svg viewBox="0 0 40 40"><path d="M8 4 L36 20 L8 36 Z" fill="#fff" stroke="#1d1b2f" stroke-width="4" stroke-linejoin="round"/></svg>
-      </button>
+      <button class="round mute" id="mute" aria-label="Sound on or off (hold)"><span class="ico"></span><svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/></svg></button>
+      <button class="round play" id="play" aria-label="Play"><span class="ico"><svg viewBox="0 0 40 40"><path d="M8 4 L36 20 L8 36 Z" fill="#fff" stroke="#1d1b2f" stroke-width="4" stroke-linejoin="round"/></svg></span><svg class="ring" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" pathLength="100"/></svg></button>
     </div>
   </div>
 </main>
@@ -325,10 +332,16 @@ const ART = {
 let ac = null, muted = false;
 try { muted = localStorage.getItem('everett-console-muted') === '1'; } catch (e) {}
 function audio() {
-  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
-  if (ac.state === 'suspended') ac.resume();
+  if (!ac) {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+    try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; }
+  }
+  // iPad Safari can leave audio 'suspended' or 'interrupted' (after speech, app switches, etc.)
+  if (ac.state !== 'running') { try { ac.resume(); } catch (e) {} }
   return ac;
 }
+['touchend', 'pointerup', 'keydown'].forEach((t) => window.addEventListener(t, () => { if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} } }, { passive: true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden && ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} } });
 function beep(f, dur, type, vol, when, slide) {
   if (muted) return; const a = audio(); if (!a) return;
   const t = a.currentTime + (when || 0), o = a.createOscillator(), g = a.createGain();
@@ -344,7 +357,12 @@ const sfx = {
 };
 function say(text) {
   if (muted) return;
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1; u.pitch = 1.25; speechSynthesis.speak(u); } catch (e) {}
+  try {
+    speechSynthesis.cancel(); if (speechSynthesis.paused) speechSynthesis.resume();
+    const u = new SpeechSynthesisUtterance(text); u.rate = 1; u.pitch = 1.25;
+    u.onend = () => { if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) {} } };
+    speechSynthesis.speak(u);
+  } catch (e) {}
 }
 
 // ---------- build ----------
@@ -393,15 +411,28 @@ function launch() {
 
 // ---------- playing a game on the console's screen ----------
 const stage = document.getElementById('stage'), frame = document.getElementById('frame');
-const PLAY_SVG = playBtn.innerHTML;
+const playIco = playBtn.querySelector('.ico');
+const PLAY_SVG = playIco.innerHTML;
 const EJECT_SVG = '<svg viewBox="0 0 40 40"><path d="M20 6 L35 24 H5 Z" fill="#fff" stroke="#1d1b2f" stroke-width="4" stroke-linejoin="round"/><rect x="5" y="28" width="30" height="7" rx="2" fill="#fff" stroke="#1d1b2f" stroke-width="4"/></svg>';
 let playing = null;
 function startGame(i, push) {
   const g = GAMES[i];
   playing = i; launching = false;
   document.body.classList.add('playing');
-  playBtn.innerHTML = EJECT_SVG; playBtn.classList.add('eject'); playBtn.setAttribute('aria-label', 'Eject the game');
-  frame.addEventListener('load', () => { try { frame.contentWindow.focus(); } catch (e) {} }, { once: true });
+  playIco.innerHTML = EJECT_SVG; playBtn.classList.add('eject'); playBtn.setAttribute('aria-label', 'Eject the game (hold)');
+  frame.addEventListener('load', () => {
+    try { frame.contentWindow.focus(); } catch (e) {}
+    // same-origin games (all of them on samuelling.github.io): stop zooming inside the game too
+    try {
+      const d = frame.contentDocument;
+      if (d && d.documentElement) {
+        lockZoom(d, false);
+        const st = d.createElement('style');
+        st.textContent = 'html{touch-action:pan-x pan-y;overscroll-behavior:none}body{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}';
+        (d.head || d.documentElement).appendChild(st);
+      }
+    } catch (e) { /* different site: can't reach in */ }
+  }, { once: true });
   frame.src = new URL(g.url, location.href).href;
   stage.classList.remove('on'); void stage.offsetWidth; stage.classList.add('on');
   if (push) history.pushState({ play: g.id }, '', '#' + g.id);
@@ -412,14 +443,31 @@ function eject(fromHistory) {
   playing = null;
   frame.src = 'about:blank';
   document.body.classList.remove('playing');
-  playBtn.innerHTML = PLAY_SVG; playBtn.classList.remove('eject'); playBtn.setAttribute('aria-label', 'Play');
+  playIco.innerHTML = PLAY_SVG; playBtn.classList.remove('eject'); playBtn.setAttribute('aria-label', 'Play');
   cartEls.forEach((el) => el.classList.remove('inserting'));
   if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   beep(523, .1, 'square', .12); beep(392, .14, 'square', .12, .08); beep(262, .2, 'square', .12, .18);
   say('Pick a game!');
   if (selected != null) select(selected, false);
 }
-playBtn.addEventListener('click', () => { if (playing != null) eject(); else launch(); });
+// hold-to-press: the action only fires after a steady 0.8 s press (keyboard Enter still works instantly)
+function holdable(btn, ms, fn, active) {
+  let timer = null;
+  const cancel = () => { clearTimeout(timer); timer = null; btn.classList.remove('holding'); };
+  btn.addEventListener('pointerdown', () => {
+    if (active && !active()) return;
+    cancel(); void btn.offsetWidth; btn.classList.add('holding');
+    timer = setTimeout(() => { cancel(); fn(); }, ms);
+  });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach((t) => btn.addEventListener(t, cancel));
+  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+// Play is a normal tap; Eject (while a game is running) must be held so stray taps don't quit the game
+holdable(playBtn, 800, () => eject(), () => playing != null);
+playBtn.addEventListener('click', (e) => {
+  if (playing != null) { if (e.detail === 0) eject(); return; }
+  launch();
+});
 window.addEventListener('popstate', () => {
   const id = history.state && history.state.play;
   if (!id && playing != null) eject(true);
@@ -429,15 +477,26 @@ window.addEventListener('popstate', () => {
 window.addEventListener('message', (e) => { if (e.data && e.data.type === 'everett-console-home') eject(); });
 
 function drawMute() {
-  muteBtn.innerHTML = muted
+  muteBtn.querySelector('.ico').innerHTML = muted
     ? '<svg viewBox="0 0 40 40"><path d="M4 15h8l10-9v28l-10-9H4z" fill="#1d1b2f"/><path d="M27 14l10 12M37 14L27 26" stroke="#1d1b2f" stroke-width="4" stroke-linecap="round"/></svg>'
     : '<svg viewBox="0 0 40 40"><path d="M4 15h8l10-9v28l-10-9H4z" fill="#1d1b2f"/><path d="M27 13a10 10 0 0 1 0 14M31 8a16 16 0 0 1 0 24" fill="none" stroke="#1d1b2f" stroke-width="4" stroke-linecap="round"/></svg>';
 }
-muteBtn.addEventListener('click', () => {
+function toggleMute() {
   muted = !muted; drawMute();
   try { localStorage.setItem('everett-console-muted', muted ? '1' : '0'); } catch (e) {}
   if (!muted) sfx.pick(); else try { speechSynthesis.cancel(); } catch (e) {}
-});
+}
+// sound on/off must be held, so random tapping can't switch the sound off
+holdable(muteBtn, 800, toggleMute);
+muteBtn.addEventListener('click', (e) => { if (e.detail === 0) toggleMute(); });
+
+// ---------- no zooming: block pinch (iOS gesture events), double-tap and multi-finger drags ----------
+function lockZoom(doc, multiTouch) {
+  const stop = (e) => { if (e.cancelable) e.preventDefault(); };
+  ['gesturestart', 'gesturechange', 'gestureend', 'dblclick'].forEach((t) => doc.addEventListener(t, stop, { passive: false }));
+  if (multiTouch) doc.addEventListener('touchmove', (e) => { if (e.touches.length > 1 || (e.scale && e.scale !== 1)) stop(e); }, { passive: false });
+}
+lockZoom(document, true);
 drawMute();
 
 // keyboard: arrows to choose, Enter to play

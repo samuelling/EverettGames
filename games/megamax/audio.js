@@ -6,9 +6,15 @@ const MMAudio = (() => {
   let muted = false;
   let song = null, pendingSong = null, timer = null, step = 0, nextT = 0;
 
+  function wake() { if (ac && ac.state !== 'running') { try { ac.resume(); } catch (e) { /* ignore */ } } }
   function init() {
-    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    // iPad Safari can leave audio 'suspended' or 'interrupted' (after speech, app switching, a call...):
+    // every touch tries to wake it back up.
+    if (ac) { wake(); return; }
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* older Safari */ }
     try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { ac = null; return; }
+    ['touchend', 'pointerup', 'keydown'].forEach((t) => window.addEventListener(t, wake, { passive: true }));
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
     master = ac.createGain(); master.gain.value = muted ? 0 : 0.8; master.connect(ac.destination);
     music = ac.createGain(); music.gain.value = 0.2; music.connect(master);
     sfxBus = ac.createGain(); sfxBus.gain.value = 0.6; sfxBus.connect(master);
@@ -120,7 +126,9 @@ const MMAudio = (() => {
     try {
       const s = window.speechSynthesis; if (!s) return;
       if (!(opts && opts.queue)) s.cancel();
+      if (s.paused) s.resume();
       const u = new SpeechSynthesisUtterance(text);
+      u.onend = wake;
       u.rate = (opts && opts.rate) || 1.0; u.pitch = (opts && opts.pitch) || 1.25; u.volume = 1;
       s.speak(u); lastSay = text;
     } catch (e) { /* no voice available */ }

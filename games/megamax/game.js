@@ -85,7 +85,8 @@
       const b = prevUI[i];
       if (hitUI(b, p)) {
         rec.btn = b.id;
-        if (b.onTap) b.onTap();
+        if (b.hold) { rec.holdT0 = performance.now(); rec.holdDone = false; } // must be held
+        else if (b.onTap) b.onTap();
         return;
       }
     }
@@ -109,6 +110,20 @@
   cvs.addEventListener('contextmenu', (e) => e.preventDefault());
 
   const held = (id) => { for (const r of pointers.values()) if (r.btn === id) return true; return false; };
+  // hold-to-press buttons (sound, home, quit): fire only after a steady press, so random taps do nothing
+  function updateHolds() {
+    for (const r of pointers.values()) {
+      if (r.holdT0 == null || r.holdDone) continue;
+      const b = prevUI.find((u) => u.id === r.btn);
+      if (!b || !hitUI(b, r)) { r.holdT0 = null; r.btn = null; continue; }
+      if (performance.now() - r.holdT0 >= b.hold * 1000) { r.holdDone = true; if (b.onTap) b.onTap(); }
+    }
+  }
+  function holdProgress(b) {
+    let k = 0;
+    for (const r of pointers.values()) if (r.btn === b.id && r.holdT0 != null && !r.holdDone) k = Math.max(k, (performance.now() - r.holdT0) / (b.hold * 1000));
+    return Math.min(1, k);
+  }
 
   const KEYMAP = {
     KeyJ: 'punch', KeyZ: 'punch', KeyK: 'power', KeyX: 'power', Space: 'jump', KeyL: 'mega', KeyC: 'mega', KeyH: 'cheer', KeyV: 'cheer',
@@ -151,9 +166,9 @@
   function toggleMute() { S.muted = !S.muted; AU.setMuted(S.muted); save(); }
   function topBar(opts) {
     opts = opts || {};
-    if (opts.home) button({ id: 'home', x: 46, y: 42, r: 30, color: '#3a3f7a', icon: 'home', onTap: opts.home });
+    if (opts.home) button({ id: 'home', x: 46, y: 42, r: 30, color: '#3a3f7a', icon: 'home', hold: 0.8, onTap: opts.home });
     if (opts.back) button({ id: 'back', x: 46, y: 42, r: 30, color: '#3a3f7a', icon: 'back', onTap: opts.back });
-    button({ id: 'mute', x: W - 46, y: 42, r: 26, color: '#3a3f7a', icon: S.muted ? 'mute' : 'sound', onTap: () => { toggleMute(); } });
+    button({ id: 'mute', x: W - 46, y: 42, r: 26, color: '#3a3f7a', icon: S.muted ? 'mute' : 'sound', hold: 0.8, onTap: () => { toggleMute(); } });
   }
   // back to the Everett Games console (when we're playing inside the console's screen, ask it to eject)
   const toConsole = () => {
@@ -347,6 +362,14 @@
       }
       if (b.drawIcon) b.drawIcon(b);
       else if (b.icon) A.drawIcon(ctx, b.icon, 0, 0, b.r * 1.05, '#fff');
+      if (b.hold) {
+        const hp = holdProgress(b);
+        if (hp > 0) {
+          ctx.beginPath(); ctx.arc(0, 0, b.r + 8, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * hp);
+          ctx.lineCap = 'round'; ctx.strokeStyle = A.OUT; ctx.lineWidth = 11; ctx.stroke();
+          ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 6; ctx.stroke();
+        }
+      }
       ctx.restore();
     });
   }
@@ -718,7 +741,7 @@
       update(dt) {
         t += dt; coach.t += dt; coach.blowT -= dt; hintCd -= dt; flashScreen = Math.max(0, flashScreen - dt * 2.5); hype = Math.max(0, hype - dt * 0.5);
         // UI
-        button({ id: 'quit', x: 480, y: 40, r: 22, color: '#3a3f7a', icon: 'home', onTap: () => { AU.sfx('tap'); go('hub'); } });
+        button({ id: 'quit', x: 480, y: 40, r: 22, color: '#3a3f7a', icon: 'home', hold: 0.8, onTap: () => { AU.sfx('tap'); go('hub'); } });
         if (P.coached) {
           const ready = P.buddy && P.meter >= 100;
           const calls = [
@@ -1526,6 +1549,7 @@
       if (fadeDir > 0 && fade >= 1) { fade = 1; setScene(nextScene[0], nextScene[1]); fadeDir = -1; }
       else if (fadeDir < 0 && fade <= 0) { fade = 0; fadeDir = 0; }
     }
+    updateHolds();
     ui = [];
     try { scene.update(dt); } catch (e) { console.error(e); }
     press.clear();
