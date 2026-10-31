@@ -28,7 +28,7 @@
   function fresh() {
     const f = {};
     FIGHTERS.forEach((d) => (f[d.id] = { size: 1, buddy: null }));
-    return { unlocked: ['boulder', 'torch'], fighters: f, wins: 0, muted: false, seenIntro: false };
+    return { unlocked: ['boulder', 'torch'], fighters: f, wins: 0, muted: false, seenIntro: false, adapt: freshAdapt() };
   }
   let S = (() => {
     try {
@@ -38,11 +38,29 @@
         if (Array.isArray(s.unlocked) && s.unlocked.length) d.unlocked = s.unlocked.filter((id) => fighterById(id));
         FIGHTERS.forEach((x) => { if (s.fighters[x.id]) Object.assign(d.fighters[x.id], s.fighters[x.id]); });
         d.wins = s.wins | 0; d.muted = !!s.muted; d.seenIntro = !!s.seenIntro;
+        if (s.adapt && typeof s.adapt.off === 'number') d.adapt = Object.assign(freshAdapt(), s.adapt);
         return d;
       }
     } catch (e) { /* storage blocked */ }
     return fresh();
   })();
+  // ADAPTIVE DIFFICULTY: a 2-down / 1-up staircase on fight results. Two wins in a row → the bad
+  // guys get one notch tougher; any loss → one notch easier. That settles around a 71% win rate.
+  // Blowouts count extra: winning with >70% health left is an instant step up; losing while the
+  // bad guy still has >60% health is an extra step down. The level number, boss levels and who
+  // you unlock don't change — only how strong/smart the bad guy actually is.
+  function freshAdapt() { return { off: 0, step: 2, dir: 0, rev: 0, run: 0, fights: 0, won: 0 }; }
+  function adaptUpdate(won, myHpFrac, theirHpFrac) {
+    const a = S.adapt;
+    const move = (dir) => {
+      if (a.dir && dir !== a.dir) a.rev++;
+      a.dir = dir; a.step = a.rev < 2 ? 2 : a.rev < 4 ? 1 : 0.6;
+      a.off = Math.max(-6, Math.min(6, a.off + dir * a.step));
+    };
+    a.fights++; if (won) a.won++;
+    if (won) { a.run++; if (a.run >= 2 || myHpFrac > 0.7) { a.run = 0; move(+1); } }
+    else { a.run = 0; move(-1); if (theirHpFrac > 0.6) move(-1); }
+  }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } }
   AU.setMuted(S.muted);
 
@@ -502,15 +520,16 @@
     // smarter, bigger, more health, harder hits, faster, quicker fireballs.
     // Every 5th level is a BOSS (crown, extra size and health).
     const L = S.wins + 1, boss = L % 5 === 0;
-    const D = Math.min(0.95, 0.25 + 0.07 * (L - 1));
+    const E = L + S.adapt.off; // effective toughness = level + adaptive staircase offset
+    const D = clamp(0.25 + 0.07 * (E - 1), 0.1, 0.95);
     const oSize = Math.min(4, 1 + Math.floor((L - 1) / 2) + (boss ? 1 : 0));
     const oBuddy = L >= 3 ? pick(BUDDIES).id : null;
     const P = makeFighter(pdef, pst.size, pst.buddy, 300, 400, 1, false);
     const O = makeFighter(odef, oSize, oBuddy, 660, 400, -1, true);
-    O.dmgMul = Math.min(0.95, 0.5 + 0.05 * (L - 1)) * (boss ? 1.1 : 1);
-    O.maxHp = O.hp = O.shownHp = Math.round(O.maxHp * Math.min(1.4, 1 + 0.05 * (L - 1)) * (boss ? 1.2 : 1));
-    O.spd *= Math.min(1.3, 1 + 0.03 * (L - 1));
-    O.powerCdMax = Math.max(0.8, 1.4 - 0.05 * (L - 1));
+    O.dmgMul = clamp(0.5 + 0.05 * (E - 1), 0.3, 0.95) * (boss ? 1.1 : 1);
+    O.maxHp = O.hp = O.shownHp = Math.round(O.maxHp * clamp(1 + 0.05 * (E - 1), 0.7, 1.4) * (boss ? 1.2 : 1));
+    O.spd *= clamp(1 + 0.03 * (E - 1), 0.85, 1.3);
+    O.powerCdMax = clamp(1.4 - 0.05 * (E - 1), 0.8, 1.9);
     O.level = L; O.boss = boss; O.rage = Math.min(1, (L - 1) / 10);
     P.coached = !!p.coach;
     const coach = { t: 0, blowT: 0, call: null };
@@ -575,6 +594,8 @@
     function finishMatch(won) {
       if (ended) return; ended = true;
       result = { won, pid: pdef.id, oid: odef.id, coach: !!p.coach, newId: null, oSize, pSize: P.size };
+      adaptUpdate(won, P.hp / P.maxHp, O.hp / O.maxHp);
+      save();
       if (won) {
         S.wins++;
         if (!S.unlocked.includes(odef.id)) { S.unlocked.push(odef.id); result.newId = odef.id; }

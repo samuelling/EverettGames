@@ -12,6 +12,8 @@ A link like `.../EverettGames/#megamax` boots straight into a game.
 | Game | Where it lives |
 | --- | --- |
 | MegaMax | `games/megamax/` (this repo) |
+| Math Buddies | `games/learn/?s=math` (this repo) |
+| Letter Land | `games/learn/?s=read` (this repo) |
 | Brick Ninja | [samuelling/Brick-Ninja](https://github.com/samuelling/Brick-Ninja) |
 | Toilet Goalie | [samuelling/toilet-goalie](https://github.com/samuelling/toilet-goalie) |
 | Slapanimal | [samuelling/Slapanimal](https://github.com/samuelling/Slapanimal) |
@@ -44,3 +46,36 @@ arrows/WASD move, J punch, K power, Space jump, L MEGAMAX, H cheer (Coach), M mu
 
 Progress saves in the browser. Everything is drawn in code and all sounds are
 synthesized, so there are no image or audio files.
+
+## Math Buddies & Letter Land
+
+Learning games that use the MegaMax buddies. Everything is spoken aloud, so no reading
+is needed to play. Each round is 8 questions, and each finished round earns a buddy
+sticker for the shared sticker book.
+
+- **Math Buddies:** counting (tap to count), more/fewer, shapes, what comes next,
+  adding and taking away with buddies, make 10, teen numbers, then Grade 1–3 skills
+  (missing addends, place value, comparing numbers, clocks, halves/fourths, adding and
+  subtracting within 100, skip counting, coins, even/odd, arrays, multiplication, division,
+  fractions, rounding, area).
+- **Letter Land:** balloon-pop letters, big/little letters, beginning sounds (munch the
+  cookie), rhymes, clapping syllables, sight words, reading CVC words, spelling with letter
+  tiles, missing vowels, then sh/ch/th, blends, silent-e, vowel teams, fill-in-the-blank
+  sentences, opposites, compound words, short stories with questions, prefixes and suffixes.
+
+**Difficulty = calendar + staircase.**
+- **Calendar:** Kindergarten is the 2026–27 school year. Each September 1 starts a new
+  grade, and within a year the level rises about one step a month (10 steps per grade).
+- **Staircase:** a transformed 3-down/1-up rule on first-try answers. Three right in a row
+  makes it one step harder, and any miss makes it one step easier, which settles at about
+  79% correct. Step size shrinks after reversals. It starts at early-K (level 0.5).
+- **Grown-ups panel:** hold the little gear on the title screen for 1.5 s. It shows the
+  grade, levels, accuracy per skill and the staircase state, and lets you shift a grade
+  up or down.
+
+## MegaMax adaptive difficulty
+
+Fight results run a 2-down/1-up staircase that settles around a 71% win rate. Winning
+with more than 70% health left counts as an instant step up, and losing badly takes an
+extra step down. It changes the bad guy's smarts, health, damage, speed and fireball
+rate. Level numbers, bosses and unlocks stay the same.

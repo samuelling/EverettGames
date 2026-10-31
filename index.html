@@ -258,6 +258,8 @@
 // ------------------------------------------------------------------
 const GAMES = [
   { id: 'megamax',       name: 'MegaMax',          url: 'games/megamax/',                              color: '#ff006e', art: 'megamax', isNew: true },
+  { id: 'math',          name: 'Math Buddies',     url: 'games/learn/?s=math',                         color: '#4361ee', art: 'math', isNew: true },
+  { id: 'letters',       name: 'Letter Land',      url: 'games/learn/?s=read',                         color: '#f15bb5', art: 'letters', isNew: true },
   { id: 'brick-ninja',   name: 'Brick Ninja',      url: 'https://samuelling.github.io/Brick-Ninja/',   color: '#3a3f7a', art: 'ninja' },
   { id: 'toilet-goalie', name: 'Toilet Goalie',    url: 'https://samuelling.github.io/toilet-goalie/', color: '#4cc9f0', art: 'toilet' },
   { id: 'slapanimal',    name: 'Slapanimal',       url: 'https://samuelling.github.io/Slapanimal/',    color: '#ff8c2b', art: 'slap' },
@@ -275,6 +277,22 @@ const ART = {
     <g transform="translate(34 64)"><rect x="-18" y="-16" width="36" height="32" rx="10" fill="#e8452c" ${O}/><path d="M-8-16 v12 M2-16 v12 M12-16 v10" ${O}/></g>
     <g transform="translate(126 64) scale(-1 1)"><rect x="-18" y="-16" width="36" height="32" rx="10" fill="#8d8f99" ${O}/><path d="M-8-16 v12 M2-16 v12 M12-16 v10" ${O}/></g>
     <g transform="translate(80 104)"><ellipse cx="0" cy="0" rx="20" ry="15" fill="#ffe066" ${O}/><path d="M-4-14 l3-10 2 6 4-8 1 12" fill="#ff9f1c" ${O}/><circle cx="-6" cy="-2" r="3" fill="#1d1b2f"/><circle cx="6" cy="-2" r="3" fill="#1d1b2f"/></g>`,
+  math: `
+    <rect width="160" height="120" fill="#4cc9f0"/>
+    <g fill="#fff" opacity=".35"><circle cx="20" cy="18" r="3"/><circle cx="140" cy="22" r="3"/><circle cx="130" cy="100" r="3"/></g>
+    <g font-family="Baloo 2, Arial Rounded MT Bold, sans-serif" font-weight="800" font-size="40" text-anchor="middle" stroke="#1d1b2f" stroke-width="7" paint-order="stroke">
+      <text x="38" y="58" fill="#ff4d6d">1</text><text x="80" y="50" fill="#ffd23f">2</text><text x="122" y="58" fill="#52d273">3</text>
+    </g>
+    <g transform="translate(58 104)"><ellipse rx="20" ry="16" fill="#ffe066" ${O}/><path d="M-4-15 l3-10 2 6 4-8 1 12" fill="#ff9f1c" ${O}/><circle cx="-6" cy="-3" r="3" fill="#1d1b2f"/><circle cx="6" cy="-3" r="3" fill="#1d1b2f"/></g>
+    <g transform="translate(106 102)"><path d="M0-26 l7 15 16 2-12 11 3 16-14-8-14 8 3-16-12-11 16-2z" fill="#ffe14d" ${O}/><circle cx="-5" cy="-4" r="2.6" fill="#1d1b2f"/><circle cx="5" cy="-4" r="2.6" fill="#1d1b2f"/></g>`,
+  letters: `
+    <rect width="160" height="120" fill="#ffd166"/>
+    <g ${O}><path d="M30 70 Q30 30 52 30 Q74 30 74 70 Z" fill="#ff4d6d"/><path d="M88 66 Q88 22 112 22 Q136 22 136 66 Z" fill="#4cc9f0"/></g>
+    <path d="M52 70 V112 M112 66 V112" stroke="#1d1b2f" stroke-width="3"/>
+    <g font-family="Andika, Baloo 2, sans-serif" font-weight="700" font-size="30" text-anchor="middle" fill="#fff" stroke="#1d1b2f" stroke-width="6" paint-order="stroke">
+      <text x="52" y="62">A</text><text x="112" y="56">b</text>
+    </g>
+    <g transform="translate(82 104)"><ellipse rx="20" ry="15" fill="#7bd389" ${O}/><path d="M0-14 q-10-6-12-16 q8 2 12 16z M2-14 q8-6 12-14 q-8 0-12 14z" fill="#2d6a4f" ${O}/><circle cx="-6" cy="-2" r="3" fill="#1d1b2f"/><circle cx="6" cy="-2" r="3" fill="#1d1b2f"/></g>`,
   ninja: `
     <rect width="160" height="120" fill="#1b1f4b"/>
     <circle cx="128" cy="26" r="16" fill="#fff6d5"/>
