@@ -155,7 +155,12 @@
     if (opts.back) button({ id: 'back', x: 46, y: 42, r: 30, color: '#3a3f7a', icon: 'back', onTap: opts.back });
     button({ id: 'mute', x: W - 46, y: 42, r: 26, color: '#3a3f7a', icon: S.muted ? 'mute' : 'sound', onTap: () => { toggleMute(); } });
   }
-  const toConsole = () => { AU.sfx('tap'); setTimeout(() => { window.location.href = '../../'; }, 120); };
+  // back to the Everett Games console (when we're playing inside the console's screen, ask it to eject)
+  const toConsole = () => {
+    AU.sfx('tap');
+    if (window.parent !== window) { try { window.parent.postMessage({ type: 'everett-console-home' }, '*'); return; } catch (e) { /* fall through */ } }
+    setTimeout(() => { window.location.href = '../../'; }, 120);
+  };
 
   // ---------------- particles & effects ----------------
   let parts = [], fx = [];
@@ -470,19 +475,27 @@
     const pdef = fighterById(p.id), pst = S.fighters[p.id];
     const lockedLeft = FIGHTERS.filter((f) => !S.unlocked.includes(f.id));
     const odef = lockedLeft.length ? lockedLeft[0] : pick(FIGHTERS.filter((f) => f.id !== p.id));
-    const D = Math.min(0.9, 0.28 + S.wins * 0.07);
-    const oSize = Math.min(4, 1 + Math.floor(S.wins / 2));
-    const oBuddy = S.wins >= 2 ? pick(BUDDIES).id : null;
+    // LEVELS: every win is a new level, and every level the bad guy gets tougher:
+    // smarter, bigger, more health, harder hits, faster, quicker fireballs.
+    // Every 5th level is a BOSS (crown, extra size and health).
+    const L = S.wins + 1, boss = L % 5 === 0;
+    const D = Math.min(0.95, 0.25 + 0.07 * (L - 1));
+    const oSize = Math.min(4, 1 + Math.floor((L - 1) / 2) + (boss ? 1 : 0));
+    const oBuddy = L >= 3 ? pick(BUDDIES).id : null;
     const P = makeFighter(pdef, pst.size, pst.buddy, 300, 400, 1, false);
     const O = makeFighter(odef, oSize, oBuddy, 660, 400, -1, true);
-    O.dmgMul = 0.5 + 0.45 * D;
+    O.dmgMul = Math.min(0.95, 0.5 + 0.05 * (L - 1)) * (boss ? 1.1 : 1);
+    O.maxHp = O.hp = O.shownHp = Math.round(O.maxHp * Math.min(1.4, 1 + 0.05 * (L - 1)) * (boss ? 1.2 : 1));
+    O.spd *= Math.min(1.3, 1 + 0.03 * (L - 1));
+    O.powerCdMax = Math.max(0.8, 1.4 - 0.05 * (L - 1));
+    O.level = L; O.boss = boss; O.rage = Math.min(1, (L - 1) / 10);
     P.coached = !!p.coach;
     const coach = { t: 0, blowT: 0, call: null };
     let projs = [];
-    let intro = 1.7, hitstop = 0, shake = 0, slow = 0, mega = null, ko = null, flashScreen = 0, hype = 0;
+    let intro = 2.3, hitstop = 0, shake = 0, slow = 0, mega = null, ko = null, flashScreen = 0, hype = 0;
     let hintCd = 0, t = 0, ended = false;
     parts = []; fx = [];
-    AU.say(`${odef.name}! Fight!`);
+    AU.say(boss ? `Level ${L}. Boss fight! ${odef.name}!` : `Level ${L}! ${odef.name}! Fight!`);
 
     function coachCall(order, icon) {
       if (intro > 0 || ko) return;
@@ -619,7 +632,7 @@
       else {
         mx = c.mx; mz = c.mz;
         if (c.punch && f.punchCd <= 0) { f.state = 'punch'; f.st = 0; f.hitDone = false; f.punchCd = 0.32; AU.sfx('swing'); }
-        else if (c.power && f.powerCd <= 0) { f.state = 'power'; f.st = 0; f.fired = false; f.powerCd = 1.4; AU.sfx('power'); }
+        else if (c.power && f.powerCd <= 0) { f.state = 'power'; f.st = 0; f.fired = false; f.powerCd = f.powerCdMax || 1.4; AU.sfx('power'); }
         else if (c.mega) {
           if (f.buddy && f.meter >= 100) { startMega(f, o); return; }
           if (!f.isCPU && hintCd <= 0) { hintCd = 2.5; AU.sfx('nope'); AU.say(f.buddy ? 'Not ready yet!' : 'Find a buddy on Buddy Island!'); }
@@ -805,7 +818,15 @@
           list.push({ z: f.z, d: () => {
             const ps = persp(f.z);
             A.drawShadow(ctx, f.x, f.z, f.sc * ps * (1 - Math.min(0.5, f.h / 400)));
+            if (f.rage > 0 && f.state !== 'ko') {
+              // the tougher the level, the angrier the red glow
+              const gy = f.z - f.h - 60 * f.sc * ps, gr = 95 * f.sc * ps * (1 + Math.sin(t * 6) * 0.06);
+              const g = ctx.createRadialGradient(f.x, gy, 10, f.x, gy, gr);
+              g.addColorStop(0, `rgba(255,40,60,${0.15 + 0.4 * f.rage})`); g.addColorStop(1, 'rgba(255,40,60,0)');
+              ctx.fillStyle = g; ctx.beginPath(); ctx.arc(f.x, gy, gr, 0, Math.PI * 2); ctx.fill();
+            }
             A.drawFighter(ctx, f.def, { x: f.x, y: f.z - f.h, scale: f.sc * ps, facing: f.facing, pose: f.state === 'hurt' && f.stun <= 0 ? 'idle' : f.state, t: f.t, flash: f.flash > 0 });
+            if (f.boss && f.state !== 'ko') drawCrown(f.x + 4 * f.facing * f.sc * ps, f.z - f.h - 142 * f.sc * ps, 0.9 * f.sc * ps);
           } });
           if (f.buddy) {
             const b = f.buddy;
@@ -845,6 +866,7 @@
         }
 
         drawHUD(P, 1); drawHUD(O, -1);
+        drawLevelBadge(W - 150, 130, O.level, O.boss, 1);
 
         if (mega && mega.t < 2.0) {
           const k = easeOutBack(Math.min(1, mega.t / 0.35));
@@ -856,7 +878,10 @@
           const k = easeOutBack(clamp((1.7 - intro) / 0.4, 0, 1));
           ctx.save(); ctx.globalAlpha = clamp(intro * 3, 0, 1);
           ctx.translate(480, 230); ctx.scale(k, k);
-          bigText(intro > 0.7 ? 'VS' : 'FIGHT!', 0, 0, 100, '#ffe14d');
+          if (intro > 0.7) {
+            bigText(boss && intro < 1.5 ? 'BOSS!' : `LEVEL ${L}`, 0, 0, 96, boss && intro < 1.5 ? '#ff4d6d' : '#ffe14d');
+            if (!(boss && intro < 1.5)) drawLevelBadge(0, 90, L, boss, 1.1);
+          } else bigText('FIGHT!', 0, 0, 100, '#ffe14d');
           ctx.restore();
         }
         if (ko && ko.t < 2.4) {
@@ -875,6 +900,21 @@
         }
       },
     };
+  }
+
+  function drawCrown(x, y, s) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    A.poly(ctx, [-26, 10, -30, -18, -14, -4, 0, -24, 14, -4, 30, -18, 26, 10]); A.fs(ctx, '#ffd23f');
+    [[-30, -18], [0, -24], [30, -18]].forEach(([cx, cy]) => { A.ell(ctx, cx, cy, 5, 5); A.fs(ctx, '#ff4d6d', 3); });
+    ctx.restore();
+  }
+  // a star with the level number in it (a crown on boss levels)
+  function drawLevelBadge(x, y, lv, boss, s) {
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s); ctx.rotate(Math.sin(T * 2) * 0.06);
+    A.star(ctx, 0, 0, 34, 5, 0.55); A.fs(ctx, boss ? '#ff4d6d' : '#ffd23f', 4);
+    if (boss) drawCrown(0, -34, 0.55);
+    bigText(String(lv), 0, 3, lv > 99 ? 20 : 28, '#fff');
+    ctx.restore();
   }
 
   function drawMegaIcon(f, ready) {
@@ -948,7 +988,7 @@
     parts = []; fx = [];
     if (r.won) {
       AU.play('menu'); AU.sfx('fanfare');
-      AU.say(ndef ? `You won! ${ndef.name} joins your team!` : 'You won!');
+      AU.say((ndef ? `You won! ${ndef.name} joins your team! ` : 'You won! ') + `Level ${S.wins + 1}!`);
     } else {
       AU.stop(); AU.sfx('lose');
       AU.say(tooSmall ? 'Oh no! Go to Buddy Island to get bigger!' : 'Oh no! Try again!');
@@ -970,6 +1010,9 @@
         drawMenuBG(t, r.won ? '#5b2a86' : '#2b2d42', r.won ? '#1b1340' : '#111');
         if (r.won) {
           bigText('YOU WIN!', 480, 80, 72, null, { rainbow: true, shift: t * 0.3 });
+          // level up: next level badge pops in
+          const lk = easeOutBack(clamp((t - 1.2) / 0.5, 0, 1));
+          if (lk > 0) { ctx.save(); ctx.translate(480, 300); ctx.scale(lk, lk); drawLevelBadge(0, 0, S.wins + 1, (S.wins + 1) % 5 === 0, 1.6); ctx.restore(); bigText('LEVEL UP!', 480, 380, 34 * lk, '#ffe14d'); }
           if (ndef) {
             A.drawShadow(ctx, 300, 400, 1.3);
             A.drawFighter(ctx, pdef, { x: 300, y: 400, scale: 1.25, facing: 1, pose: 'win', t });
@@ -988,7 +1031,7 @@
             A.drawFighter(ctx, pdef, { x: 480, y: 400, scale: 1.5, facing: 1, pose: 'win', t });
           }
           // team strip
-          drawPips(480, 128, S.unlocked.length, FIGHTERS.length, 8);
+          drawPips(480, 128, S.unlocked.length, FIGHTERS.length, 5);
         } else {
           bigText('OH NO!', 480, 90, 72, '#ffd23f');
           A.drawShadow(ctx, 360, 400, 1.3);
@@ -1042,13 +1085,13 @@
 
     // buddies: prefer ones this fighter doesn't have yet
     const pool = shuffle(BUDDIES.filter((b) => b.id !== st.buddy));
-    const crit = pool.slice(0, 4).map((b, i) => {
+    const crit = pool.slice(0, 5).map((b, i) => {
       const c = { def: b, x: 0, z: 0, h: 0, vh: 0, t: rand(0, 5), state: 'wander', tx: 0, tz: 0, fleeT: 0, tiredT: 0, facing: 1, bush: null };
       if (i < 2) {
         const bush = bushes[2 + i * 4 + Math.floor(rand(0, 2))];
         bush.hide = c; c.bush = bush; c.state = 'hide'; c.x = bush.x; c.z = bush.z + 2;
       } else {
-        c.x = 700 + i * 500 + rand(-100, 100); c.z = rand(340, 490);
+        c.x = 650 + (i - 2) * 650 + rand(-100, 100); c.z = rand(340, 490);
         if (b.id === 'bubbles') { c.x = pond.x + 60; c.z = pond.z + 30; }
       }
       c.tx = c.x; c.tz = c.z;
@@ -1366,17 +1409,18 @@
       draw() {
         drawMenuBG(t);
         // wins
-        ctx.fillStyle = '#ffe14d'; A.star(ctx, 450, 44, 20, 5, 0.45); ctx.fill(); ctx.lineWidth = 3; ctx.strokeStyle = A.OUT; ctx.stroke();
-        bigText(String(S.wins), 500, 44, 34, '#fff');
+        bigText('LEVEL', 440, 44, 34, '#fff');
+        drawLevelBadge(530, 44, S.wins + 1, (S.wins + 1) % 5 === 0, 0.8);
         // team strip
-        A.rrect(ctx, 70, 404, 820, 122, 24); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fill();
+        // the whole team: unlocked fighters in color, the rest as shadows
+        A.rrect(ctx, 70, 398, 820, 134, 24); ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fill();
+        const perRow = Math.ceil(FIGHTERS.length / 2);
         FIGHTERS.forEach((d, i) => {
-          const x = 122 + i * 102, have = S.unlocked.includes(d.id), st = S.fighters[d.id];
-          const s = 0.5 + 0.06 * (st.size - 1);
-          A.drawFighter(ctx, d, { x, y: 498, scale: s, facing: 1, pose: 'idle', t: t + i, silhouette: !have });
-          if (have && st.buddy) A.drawBuddy(ctx, buddyById(st.buddy), { x: x + 32, y: 500, scale: 0.34, t: t + i, mood: 'idle' });
-          if (!have) A.drawIcon(ctx, 'lock', x, 452, 22, '#9d8fd0');
-          else drawPips(x, 514, st.size, 4, 3.5);
+          const x = 102 + (i % perRow) * (756 / (perRow - 1)), y = i < perRow ? 462 : 522;
+          const have = S.unlocked.includes(d.id), st = S.fighters[d.id];
+          const s = 0.3 + 0.035 * (st.size - 1);
+          A.drawFighter(ctx, d, { x, y, scale: s, facing: 1, pose: 'idle', t: t + i, silhouette: !have });
+          if (!have) A.drawIcon(ctx, 'lock', x, y - 22, 13, '#9d8fd0');
         });
       },
     };
@@ -1386,6 +1430,8 @@
     AU.play('menu');
     let t = 0, how = p.pre ? p.pre : null;
     const mode = p.mode;
+    const PER = 8, pages = Math.ceil(FIGHTERS.length / PER);
+    let page = 0;
     if (how) setTimeout(() => AU.say('Do you want to fight, or be the coach?'), 300);
     else setTimeout(() => AU.say('Pick a fighter!'), 250);
     const choose = (d) => {
@@ -1422,9 +1468,13 @@
           return;
         }
         topBar({ back: () => { AU.sfx('tap'); go('hub'); } });
-        FIGHTERS.forEach((d, i) => {
-          const col = i % 4, row = Math.floor(i / 4);
-          const x = 70 + col * 210, y = 96 + row * 214, w = 190, h = 196;
+        const turn = (dir) => () => { AU.sfx('tap'); page = (page + dir + pages) % pages; focusIdx = -1; };
+        button({ id: 'pg-l', x: 40, y: 300, r: 30, color: '#ff4d6d', icon: 'left', focus: true, onTap: turn(-1) });
+        button({ id: 'pg-r', x: 920, y: 300, r: 30, color: '#ff4d6d', icon: 'right', focus: true, onTap: turn(1) });
+        FIGHTERS.slice(page * PER, page * PER + PER).forEach((d, j) => {
+          const i = page * PER + j;
+          const col = j % 4, row = Math.floor(j / 4);
+          const x = 80 + col * 205, y = 96 + row * 210, w = 185, h = 194;
           const have = S.unlocked.includes(d.id), st = S.fighters[d.id];
           button({ id: 'f-' + d.id, x, y, w, h, focus: have, onTap: () => {
             if (have) choose(d);
@@ -1450,6 +1500,7 @@
         ctx.save(); ctx.translate(480, 44);
         if (mode === 'island') drawIslandIcon(56); else { ctx.fillStyle = '#ff4d6d'; A.star(ctx, 0, 0, 28, 8, 0.5); ctx.fill(); A.drawIcon(ctx, 'fist', 0, 0, 30, '#fff'); }
         ctx.restore();
+        if (!how) for (let i = 0; i < pages; i++) { A.ell(ctx, 480 + (i - (pages - 1) / 2) * 26, 524, 7, 7); A.fs(ctx, i === page ? '#ffe14d' : 'rgba(255,255,255,0.25)', 3); }
       },
     };
   }

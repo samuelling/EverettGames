@@ -178,6 +178,33 @@
   .mute svg { width: 28px; height: 28px; }
   .round:focus-visible, .cart:focus-visible .shell { outline: 5px solid #fff; outline-offset: 3px; }
 
+  /* ---------- playing: the game runs inside the console's screen ---------- */
+  .stage {
+    display: none; position: relative; aspect-ratio: 16 / 9; max-width: 100%;
+    width: min(calc(100vw - 96px), calc((100vh - 210px) * 16 / 9));
+    width: min(calc(100vw - 96px), calc((100dvh - 210px) * 16 / 9));
+    border-radius: 14px; overflow: hidden; background: #000;
+  }
+  .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; background: #000; }
+  .stage::after { content: ""; position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+  .stage.on::after { animation: crt .7s ease-out forwards; }
+  @keyframes crt { 0% { opacity: 1; transform: scaleY(.02); } 35% { opacity: .9; transform: scaleY(1); } 100% { opacity: 0; } }
+  body.playing { padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  body.playing .carts { display: none; }
+  body.playing .stage { display: block; }
+  body.playing .console { width: auto; max-width: 100%; padding: 10px clamp(12px, 2vw, 22px) 14px; border-radius: 36px 36px 46px 46px; }
+  body.playing .label { margin-bottom: 8px; }
+  body.playing .name { font-size: clamp(22px, 4vh, 40px); }
+  body.playing .name span { -webkit-text-stroke-width: 4px; text-shadow: 0 3px 0 var(--ink); }
+  body.playing .badge { font-size: 13px; }
+  body.playing .screen { padding: 8px; border-radius: 22px; }
+  body.playing .controls { margin-top: 10px; }
+  body.playing .dpad { transform: scale(.6); margin: -18px; }
+  body.playing .play { width: 66px; height: 66px; }
+  body.playing .play svg { width: 32px; height: 32px; margin-left: 0; }
+  body.playing .mute { width: 46px; height: 46px; }
+  .play.eject { background: #ff8c2b; animation: none; }
+
   .flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 10; }
   .flash.on { opacity: 1; }
 
@@ -197,6 +224,7 @@
   </div>
   <div class="screen">
     <div class="carts" id="carts" role="list"></div>
+    <div class="stage" id="stage"><iframe id="frame" title="Game" allow="autoplay; fullscreen; gamepad" allowfullscreen></iframe></div>
   </div>
   <div class="controls">
     <div class="dpad" aria-hidden="true"></div>
@@ -360,9 +388,45 @@ function launch() {
   sfx.insert(); say(`Let's play ${g.name}!`);
   cartEls[selected].classList.add('inserting');
   setTimeout(() => document.getElementById('flash').classList.add('on'), 650);
-  setTimeout(() => { window.location.href = g.url; }, 950);
+  setTimeout(() => { startGame(selected, true); document.getElementById('flash').classList.remove('on'); }, 950);
 }
-playBtn.addEventListener('click', launch);
+
+// ---------- playing a game on the console's screen ----------
+const stage = document.getElementById('stage'), frame = document.getElementById('frame');
+const PLAY_SVG = playBtn.innerHTML;
+const EJECT_SVG = '<svg viewBox="0 0 40 40"><path d="M20 6 L35 24 H5 Z" fill="#fff" stroke="#1d1b2f" stroke-width="4" stroke-linejoin="round"/><rect x="5" y="28" width="30" height="7" rx="2" fill="#fff" stroke="#1d1b2f" stroke-width="4"/></svg>';
+let playing = null;
+function startGame(i, push) {
+  const g = GAMES[i];
+  playing = i; launching = false;
+  document.body.classList.add('playing');
+  playBtn.innerHTML = EJECT_SVG; playBtn.classList.add('eject'); playBtn.setAttribute('aria-label', 'Eject the game');
+  frame.addEventListener('load', () => { try { frame.contentWindow.focus(); } catch (e) {} }, { once: true });
+  frame.src = new URL(g.url, location.href).href;
+  stage.classList.remove('on'); void stage.offsetWidth; stage.classList.add('on');
+  if (push) history.pushState({ play: g.id }, '', '#' + g.id);
+}
+function eject(fromHistory) {
+  if (playing == null) return;
+  if (!fromHistory && history.state && history.state.play) { history.back(); return; } // popstate finishes the eject
+  playing = null;
+  frame.src = 'about:blank';
+  document.body.classList.remove('playing');
+  playBtn.innerHTML = PLAY_SVG; playBtn.classList.remove('eject'); playBtn.setAttribute('aria-label', 'Play');
+  cartEls.forEach((el) => el.classList.remove('inserting'));
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  beep(523, .1, 'square', .12); beep(392, .14, 'square', .12, .08); beep(262, .2, 'square', .12, .18);
+  say('Pick a game!');
+  if (selected != null) select(selected, false);
+}
+playBtn.addEventListener('click', () => { if (playing != null) eject(); else launch(); });
+window.addEventListener('popstate', () => {
+  const id = history.state && history.state.play;
+  if (!id && playing != null) eject(true);
+  else if (id && playing == null) { const i = GAMES.findIndex((g) => g.id === id); if (i >= 0) { select(i, false); startGame(i, false); } }
+});
+// games can ask the console to eject them (MegaMax's home button does this)
+window.addEventListener('message', (e) => { if (e.data && e.data.type === 'everett-console-home') eject(); });
 
 function drawMute() {
   muteBtn.innerHTML = muted
@@ -378,6 +442,7 @@ drawMute();
 
 // keyboard: arrows to choose, Enter to play
 document.addEventListener('keydown', (e) => {
+  if (playing != null) { if (e.key === 'Escape') eject(); return; }
   if (launching) return;
   const cols = Math.max(1, Math.round(cartsEl.clientWidth / cartEls[0].offsetWidth));
   const cur = selected == null ? -1 : selected;
@@ -394,8 +459,17 @@ document.addEventListener('keydown', (e) => {
 window.addEventListener('pageshow', () => {
   launching = false;
   document.getElementById('flash').classList.remove('on');
-  cartEls.forEach((el) => el.classList.remove('inserting'));
+  if (playing == null) cartEls.forEach((el) => el.classList.remove('inserting'));
 });
+
+// a link like .../EverettGames/#megamax opens straight into that game
+function openFromHash() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  const i = GAMES.findIndex((g) => g.id === id && !g.soon);
+  if (i >= 0 && playing == null) { select(i, false); history.replaceState({ play: id }, '', '#' + id); startGame(i, false); }
+}
+window.addEventListener('hashchange', openFromHash);
+openFromHash();
 </script>
 </body>
 </html>

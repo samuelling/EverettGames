@@ -1,7 +1,9 @@
 # Everett Games
 
 Everett's game console: a cartridge picker for all the games Everett has dreamed up.
-Tap a cartridge once to hear its name, then tap it again (or press ▶) to play.
+Tap a cartridge once to hear its name, then tap it again (or press ▶). The game plays
+right on the console's screen; the orange eject button takes you back to the cartridges.
+A link like `.../EverettGames/#megamax` boots straight into a game.
 
 **Play:** https://samuelling.github.io/EverettGames/
 
@@ -23,8 +25,11 @@ To add a game, add one line to the `GAMES` list near the bottom of `index.html`
 
 Everett's arena fighting game.
 
-- **Arena.** Fight in a round arena. Beat a fighter and they join your team.
-- **Buddy Island.** Only buddies live here, no enemies. Find one hiding in the bushes
+- **Arena.** Fight in a round arena. Beat a fighter and they join your team (28 fighters).
+- **Levels.** Every win is a new level, and every level the bad guys get tougher:
+  bigger, smarter, faster, with more health and harder hits (and a red glow that gets
+  angrier). Every 5th level is a **boss** with a crown: Jack, Magma, Bonez, Sir Clank, Drako.
+- **Buddy Island.** Only buddies live here (14 kinds), no enemies. Find one hiding in the bushes
   or chase one down. Catching it makes your fighter **bigger** (up to 4 sizes), and
   the buddy becomes your partner, nipping at the other fighter during matches.
 - **MEGAMAX skill.** Landing hits fills the meter. When it's full, your buddy goes
