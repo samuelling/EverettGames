@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Everett Games">
+<meta name="theme-color" content="#ff9f1c">
+<title>Everett Games</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='4' y='10' width='56' height='44' rx='14' fill='%2352d273' stroke='%231d1b2f' stroke-width='4'/%3E%3Crect x='14' y='18' width='36' height='20' rx='5' fill='%231d1b2f'/%3E%3Ccircle cx='46' cy='46' r='4' fill='%23ff4d6d'/%3E%3Crect x='14' y='43' width='12' height='4' fill='%231d1b2f'/%3E%3Crect x='18' y='39' width='4' height='12' fill='%231d1b2f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1d1b2f;
+    --shell: #52d273;
+    --shell-dark: #2f9e52;
+    --shell-light: #8af0a6;
+    --screen: #241f45;
+    --font: "Baloo 2", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; min-height: 100%; }
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 20% 15%, rgba(255,255,255,.35) 0 2px, transparent 3px) 0 0 / 46px 46px,
+      radial-gradient(circle at 70% 60%, rgba(255,255,255,.25) 0 3px, transparent 4px) 0 0 / 70px 70px,
+      linear-gradient(160deg, #ffb703 0%, #ff8c2b 45%, #ff4d6d 100%);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: max(14px, env(safe-area-inset-top)) 12px max(14px, env(safe-area-inset-bottom));
+    -webkit-user-select: none; user-select: none;
+    overflow-x: hidden;
+  }
+
+  /* ---------- the console ---------- */
+  .console {
+    position: relative;
+    width: min(1100px, 100%);
+    background: linear-gradient(180deg, var(--shell-light) 0%, var(--shell) 18%, var(--shell) 80%, var(--shell-dark) 100%);
+    border: 6px solid var(--ink);
+    border-radius: 48px 48px 64px 64px;
+    padding: 18px clamp(14px, 3vw, 36px) 26px;
+    box-shadow: 0 14px 0 var(--ink), 0 30px 40px rgba(60, 10, 30, .35), inset 0 8px 0 rgba(255,255,255,.35);
+  }
+  .console::before { /* screws */
+    content: ""; position: absolute; inset: 14px 18px auto 18px; height: 14px;
+    background:
+      radial-gradient(circle, #2f9e52 0 5px, transparent 6px) left / 14px 14px no-repeat,
+      radial-gradient(circle, #2f9e52 0 5px, transparent 6px) right / 14px 14px no-repeat;
+  }
+
+  .label {
+    display: flex; align-items: center; justify-content: center; gap: clamp(8px, 2vw, 18px);
+    margin: 0 auto 14px;
+  }
+  .name { display: flex; gap: .02em; font-weight: 800; font-size: clamp(38px, 8vw, 76px); line-height: 1; letter-spacing: .01em; }
+  .name span {
+    display: inline-block;
+    -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill;
+    text-shadow: 0 6px 0 var(--ink);
+    animation: bob 2.4s ease-in-out infinite;
+  }
+  .name span:nth-child(odd) { animation-delay: -1.2s; }
+  .name span:nth-child(1) { color: #ff4d6d; } .name span:nth-child(2) { color: #ffd23f; }
+  .name span:nth-child(3) { color: #4cc9f0; } .name span:nth-child(4) { color: #fff; }
+  .name span:nth-child(5) { color: #c3a6ff; } .name span:nth-child(6) { color: #ff8c2b; }
+  .name span:nth-child(7) { color: #ffd23f; }
+  @keyframes bob { 50% { transform: translateY(-5px) rotate(-3deg); } }
+  .badge {
+    background: var(--ink); color: #ffd23f; font-weight: 800; font-size: clamp(14px, 2.3vw, 22px);
+    padding: 4px 14px 2px; border-radius: 999px; transform: rotate(-4deg); white-space: nowrap;
+  }
+
+  .screen {
+    background: radial-gradient(ellipse at 50% 0%, #3b2f7a 0%, var(--screen) 70%);
+    border: 6px solid var(--ink);
+    border-radius: 30px;
+    box-shadow: inset 0 0 0 6px #18142f, inset 0 18px 40px rgba(0,0,0,.4);
+    padding: clamp(14px, 2.5vw, 26px);
+    position: relative;
+  }
+  .screen::after { /* glass glare */
+    content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 24px;
+    background: linear-gradient(135deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,0) 35%);
+  }
+
+  .carts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(46%, 200px), 1fr));
+    gap: clamp(14px, 2.4vw, 24px);
+  }
+
+  /* ---------- cartridges ---------- */
+  .cart {
+    --c: #ff4d6d;
+    position: relative; display: block; width: 100%;
+    appearance: none; border: 0; padding: 0; background: none; cursor: pointer;
+    font: inherit; color: inherit; text-align: center;
+    transition: transform .18s cubic-bezier(.3,1.6,.5,1);
+    outline: none;
+  }
+  .cart .shell {
+    position: relative; display: block;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 70%, #fff) 0%, var(--c) 30%, color-mix(in srgb, var(--c) 80%, #000) 100%);
+    border: 5px solid var(--ink);
+    border-radius: 16px 16px 22px 22px;
+    padding: 18px 12px 12px;
+    box-shadow: 0 7px 0 var(--ink);
+    clip-path: polygon(0 0, 30% 0, 34% 10px, 66% 10px, 70% 0, 100% 0, 100% 100%, 0 100%);
+  }
+  .cart .sticker {
+    background: #fff; border: 4px solid var(--ink); border-radius: 12px; overflow: hidden;
+    aspect-ratio: 4 / 3; display: block;
+  }
+  .cart .sticker svg { width: 100%; height: 100%; display: block; }
+  .cart .title {
+    display: block; margin-top: 8px; font-weight: 800; font-size: clamp(16px, 2.2vw, 22px); line-height: 1.05;
+    color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill;
+  }
+  .cart .grip { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+  .cart .grip i { width: 8px; height: 14px; border-radius: 4px; background: rgba(0,0,0,.28); }
+  .cart:hover { transform: translateY(-4px) rotate(-1deg); }
+  .cart:active { transform: translateY(2px) scale(.97); }
+  .cart.sel { transform: translateY(-10px) scale(1.04); z-index: 2; }
+  .cart.sel { filter: drop-shadow(0 0 4px #ffd23f) drop-shadow(0 0 4px #ffd23f) drop-shadow(0 0 18px rgba(255,210,63,.9)); }
+  .cart.sel::after {
+    content: "▶"; position: absolute; top: -16px; right: -12px; z-index: 3; width: 52px; height: 52px; border-radius: 50%;
+    background: #52d273; border: 5px solid var(--ink); color: #fff; font-size: 22px; line-height: 42px; padding-left: 4px;
+    box-shadow: 0 4px 0 var(--ink); animation: pulse .7s ease-in-out infinite alternate;
+  }
+  @keyframes pulse { to { transform: scale(1.15); } }
+  .cart.new .shell::before {
+    content: "NEW"; position: absolute; top: 14px; left: -6px; z-index: 2; transform: rotate(-12deg);
+    background: #ffd23f; border: 4px solid var(--ink); border-radius: 10px; padding: 0 8px; font-weight: 800; font-size: 15px;
+  }
+  .cart.soon { filter: saturate(.35) brightness(.8); }
+  .cart.soon .sticker { position: relative; }
+  .cart.soon .shell::before {
+    content: "🔨"; position: absolute; top: 12px; right: 4px; z-index: 2; font-size: 28px;
+    filter: drop-shadow(0 2px 0 var(--ink));
+  }
+  .cart.inserting { animation: insert .75s cubic-bezier(.5,-0.4,.7,1) forwards; }
+  @keyframes insert {
+    0% { transform: translateY(-10px) scale(1.04); }
+    35% { transform: translateY(-40px) scale(1.08) rotate(-3deg); }
+    100% { transform: translateY(120vh) scale(.6) rotate(4deg); }
+  }
+
+  /* ---------- controls row ---------- */
+  .controls {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin-top: 22px; padding: 0 clamp(4px, 2vw, 24px);
+  }
+  .dpad { position: relative; width: 92px; height: 92px; flex: none; }
+  .dpad::before, .dpad::after {
+    content: ""; position: absolute; background: var(--ink); border-radius: 8px;
+  }
+  .dpad::before { left: 31px; top: 0; width: 30px; height: 92px; }
+  .dpad::after { top: 31px; left: 0; width: 92px; height: 30px; }
+  .speaker { display: grid; grid-template-columns: repeat(6, 9px); gap: 7px; transform: rotate(-20deg); opacity: .8; }
+  .speaker i { width: 9px; height: 9px; border-radius: 50%; background: var(--shell-dark); box-shadow: inset 0 2px 0 rgba(0,0,0,.35); }
+  .btns { display: flex; align-items: center; gap: 14px; }
+  .round {
+    appearance: none; border: 5px solid var(--ink); border-radius: 50%; cursor: pointer;
+    box-shadow: 0 6px 0 var(--ink); display: grid; place-items: center; padding: 0;
+    transition: transform .1s;
+  }
+  .round:active { transform: translateY(5px); box-shadow: 0 1px 0 var(--ink); }
+  .play { width: 96px; height: 96px; background: #ff4d6d; }
+  .play svg { width: 44px; height: 44px; margin-left: 6px; }
+  .play.ready { animation: pulse .6s ease-in-out infinite alternate; background: #52d273; }
+  .mute { width: 56px; height: 56px; background: #ffd23f; }
+  .mute svg { width: 28px; height: 28px; }
+  .round:focus-visible, .cart:focus-visible .shell { outline: 5px solid #fff; outline-offset: 3px; }
+
+  .flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 10; }
+  .flash.on { opacity: 1; }
+
+  @media (max-width: 560px) {
+    .console { border-radius: 34px 34px 46px 46px; }
+    .speaker, .dpad { display: none; }
+    .controls { justify-content: center; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+<main class="console" aria-label="Everett's game console">
+  <div class="label">
+    <div class="name" aria-label="Everett"><span>E</span><span>V</span><span>E</span><span>R</span><span>E</span><span>T</span><span>T</span></div>
+    <div class="badge">GAMES</div>
+  </div>
+  <div class="screen">
+    <div class="carts" id="carts" role="list"></div>
+  </div>
+  <div class="controls">
+    <div class="dpad" aria-hidden="true"></div>
+    <div class="speaker" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="btns">
+      <button class="round mute" id="mute" aria-label="Sound on or off"></button>
+      <button class="round play" id="play" aria-label="Play">
+        <svg viewBox="0 0 40 40"><path d="M8 4 L36 20 L8 36 Z" fill="#fff" stroke="#1d1b2f" stroke-width="4" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+  </div>
+</main>
+<div class="flash" id="flash"></div>
+
+<script>
+'use strict';
+// ------------------------------------------------------------------
+// The game list. To add a game: add a line here (url can be a folder in
+// this repo like "games/megamax/" or a full https:// link to another repo's
+// GitHub Pages site). Set soon:true for games that aren't built yet.
+// ------------------------------------------------------------------
+const GAMES = [
+  { id: 'megamax',       name: 'MegaMax',          url: 'games/megamax/',                              color: '#ff006e', art: 'megamax', isNew: true },
+  { id: 'brick-ninja',   name: 'Brick Ninja',      url: 'https://samuelling.github.io/Brick-Ninja/',   color: '#3a3f7a', art: 'ninja' },
+  { id: 'toilet-goalie', name: 'Toilet Goalie',    url: 'https://samuelling.github.io/toilet-goalie/', color: '#4cc9f0', art: 'toilet' },
+  { id: 'slapanimal',    name: 'Slapanimal',       url: 'https://samuelling.github.io/Slapanimal/',    color: '#ff8c2b', art: 'slap' },
+  { id: 'candy',         name: "Chip's Candy Run", soon: true,                                          color: '#f15bb5', art: 'candy' },
+  { id: 'journey',       name: 'Animal Journey',   soon: true,                                          color: '#2ec4b6', art: 'journey' },
+];
+
+// ---------- sticker art (inline SVG, 160x120) ----------
+const O = 'stroke="#1d1b2f" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"';
+const ART = {
+  megamax: `
+    <rect width="160" height="120" fill="#3b1c7a"/>
+    <g fill="#ffd23f" opacity=".35"><path d="M80 60 L0 0 H40Z M80 60 L120 0 H160Z M80 60 L160 80 V120Z M80 60 L0 120 V80Z M80 60 L60 120 H100Z"/></g>
+    <path d="M80 30 l8 18 20 2 -15 13 5 20 -18-11 -18 11 5-20 -15-13 20-2z" fill="#ffd23f" ${O}/>
+    <g transform="translate(34 64)"><rect x="-18" y="-16" width="36" height="32" rx="10" fill="#e8452c" ${O}/><path d="M-8-16 v12 M2-16 v12 M12-16 v10" ${O}/></g>
+    <g transform="translate(126 64) scale(-1 1)"><rect x="-18" y="-16" width="36" height="32" rx="10" fill="#8d8f99" ${O}/><path d="M-8-16 v12 M2-16 v12 M12-16 v10" ${O}/></g>
+    <g transform="translate(80 104)"><ellipse cx="0" cy="0" rx="20" ry="15" fill="#ffe066" ${O}/><path d="M-4-14 l3-10 2 6 4-8 1 12" fill="#ff9f1c" ${O}/><circle cx="-6" cy="-2" r="3" fill="#1d1b2f"/><circle cx="6" cy="-2" r="3" fill="#1d1b2f"/></g>`,
+  ninja: `
+    <rect width="160" height="120" fill="#1b1f4b"/>
+    <circle cx="128" cy="26" r="16" fill="#fff6d5"/>
+    <g fill="#fff" opacity=".7"><circle cx="20" cy="20" r="1.5"/><circle cx="60" cy="12" r="1.5"/><circle cx="96" cy="30" r="1.5"/><circle cx="40" cy="40" r="1.5"/></g>
+    <rect x="0" y="96" width="160" height="24" fill="#2b2d42"/>
+    <g transform="translate(62 70)">
+      <rect x="-10" y="-46" width="20" height="10" rx="3" fill="#ffd23f" ${O}/>
+      <rect x="-28" y="-38" width="56" height="50" rx="10" fill="#ffd23f" ${O}/>
+      <rect x="-30" y="-24" width="60" height="18" fill="#1d1b2f"/>
+      <ellipse cx="-11" cy="-15" rx="6" ry="5" fill="#fff"/><ellipse cx="11" cy="-15" rx="6" ry="5" fill="#fff"/>
+      <path d="M30 -18 q16 -4 22 6 q-12 -2 -22 4" fill="#e63946" ${O}/>
+    </g>
+    <g transform="translate(122 76) rotate(20)"><path d="M0-22 L6-6 22 0 6 6 0 22 -6 6 -22 0 -6-6Z" fill="#c0c8d0" ${O}/><circle r="4" fill="#1d1b2f"/></g>`,
+  toilet: `
+    <rect width="160" height="120" fill="#bde9ff"/>
+    <g stroke="#9ad3f0" stroke-width="2"><path d="M0 30H160M0 60H160M40 0V120M80 0V120M120 0V120"/></g>
+    <rect x="0" y="98" width="160" height="22" fill="#7fb5d0"/>
+    <g transform="translate(58 70)">
+      <rect x="-16" y="-50" width="40" height="34" rx="6" fill="#fff" ${O}/>
+      <path d="M-30 -16 H40 Q40 14 10 18 L14 32 H-14 L-10 18 Q-30 12 -30 -16Z" fill="#fff" ${O}/>
+      <path d="M-6 -40 l10 6 M16 -40 l-10 6" ${O}/>
+      <circle cx="-2" cy="-30" r="4" fill="#1d1b2f"/><circle cx="12" cy="-30" r="4" fill="#1d1b2f"/>
+      <path d="M-26 -8 Q5 6 36 -8" fill="#9ad3f0" ${O}/>
+    </g>
+    <g transform="translate(126 44)"><circle r="18" fill="#fff" ${O}/><path d="M0-7 l7 5 -3 8 h-8 l-3-8z" fill="#1d1b2f"/><path d="M-22 6 h-14 M-22 14 h-10" stroke="#fff" stroke-width="4" stroke-linecap="round"/></g>`,
+  slap: `
+    <rect width="160" height="120" fill="#ffd166"/>
+    <g fill="#8a8f99" ${O}><path d="M10 120 l12-26 12 26z M40 120 l12-26 12 26z M100 120 l12-26 12 26z M130 120 l12-26 12 26z"/></g>
+    <g transform="translate(80 58)">
+      <path d="M-34 -18 L-30 -46 -12 -30Z M34 -18 L30 -46 12 -30Z" fill="#ff8c2b" ${O}/>
+      <ellipse rx="38" ry="32" fill="#ff8c2b" ${O}/>
+      <ellipse cx="0" cy="12" rx="18" ry="12" fill="#fff3d6"/>
+      <path d="M-20 -10 l10 10 M-10 -10 l-10 10 M10 -10 l10 10 M20 -10 l-10 10" ${O}/>
+      <ellipse cx="0" cy="18" rx="6" ry="5" fill="#7a1f2b" ${O}/>
+      <path d="M38 -4 q14 -10 22 -2 q-8 6 -22 10" fill="#ff8c2b" ${O}/>
+    </g>
+    <g fill="#fff" ${O}><path d="M40 16 l3 7 7 1 -5 5 1 7 -6-3 -6 3 1-7 -5-5 7-1z"/><path d="M116 10 l3 7 7 1 -5 5 1 7 -6-3 -6 3 1-7 -5-5 7-1z"/></g>`,
+  candy: `
+    <rect width="160" height="120" fill="#ffd6ef"/>
+    <g fill="#ffb3de"><path d="M0 0h20L0 20z M40 0h20L0 60V40z M80 0h20L0 100V80z M120 0h20L20 120H0z M160 20v20L60 120H40z M160 60v20L100 120H80z"/></g>
+    <g transform="translate(64 66)">
+      <path d="M0 -42 Q30 0 26 20 Q20 38 0 38 Q-20 38 -26 20 Q-30 0 0 -42Z" fill="#6b3e26" ${O}/>
+      <circle cx="-9" cy="10" r="7" fill="#fff"/><circle cx="9" cy="10" r="7" fill="#fff"/>
+      <circle cx="-7" cy="11" r="3.5" fill="#1d1b2f"/><circle cx="11" cy="11" r="3.5" fill="#1d1b2f"/>
+      <path d="M-6 24 q6 5 12 0" ${O}/>
+    </g>
+    <g transform="translate(122 60)"><path d="M-6 50 V-20 a16 16 0 0 1 32 0" fill="none" stroke="#1d1b2f" stroke-width="14" stroke-linecap="round"/><path d="M-6 50 V-20 a16 16 0 0 1 32 0" fill="none" stroke="#fff" stroke-width="8" stroke-linecap="round"/><path d="M-6 50 V-20 a16 16 0 0 1 32 0" fill="none" stroke="#ff4d6d" stroke-width="8" stroke-dasharray="6 8"/></g>`,
+  journey: `
+    <rect width="160" height="120" fill="#a8e6ff"/>
+    <rect y="62" width="160" height="58" fill="#2f9fd8"/>
+    <path d="M0 62 q10 -6 20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0 t20 0" fill="none" stroke="#fff" stroke-width="3"/>
+    <g transform="translate(46 92)"><ellipse rx="22" ry="13" fill="#ff8c2b" ${O}/><path d="M20 0 L36 -12 V12Z" fill="#ff8c2b" ${O}/><circle cx="-10" cy="-3" r="3.5" fill="#1d1b2f"/></g>
+    <g transform="translate(112 32)"><ellipse rx="16" ry="11" fill="#4361ee" ${O}/><path d="M-4 -4 Q-18 -26 -26 -10 Q-14 -6 -4 2Z" fill="#4cc9f0" ${O}/><path d="M16 -2 L28 2 16 6Z" fill="#ffd23f" ${O}/><circle cx="8" cy="-3" r="3" fill="#1d1b2f"/></g>
+    <path d="M70 80 Q86 58 98 50" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="4 7" stroke-linecap="round"/>`,
+};
+
+// ---------- sounds & voice (picture-first: the console talks) ----------
+let ac = null, muted = false;
+try { muted = localStorage.getItem('everett-console-muted') === '1'; } catch (e) {}
+function audio() {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return null; } }
+  if (ac.state === 'suspended') ac.resume();
+  return ac;
+}
+function beep(f, dur, type, vol, when, slide) {
+  if (muted) return; const a = audio(); if (!a) return;
+  const t = a.currentTime + (when || 0), o = a.createOscillator(), g = a.createGain();
+  o.type = type || 'square'; o.frequency.setValueAtTime(f, t);
+  if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol || .12, t + .01); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t + dur + .05);
+}
+const sfx = {
+  pick: () => { beep(660, .07); beep(990, .09, 'square', .1, .06); },
+  nope: () => { beep(240, .12); beep(180, .16, 'square', .12, .1); },
+  insert: () => { beep(140, .12, 'square', .2); [523, 659, 784, 1047, 1319].forEach((f, i) => beep(f, .14, 'square', .1, .18 + i * .07)); beep(200, .6, 'sawtooth', .08, .2, 1600); },
+};
+function say(text) {
+  if (muted) return;
+  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 1; u.pitch = 1.25; speechSynthesis.speak(u); } catch (e) {}
+}
+
+// ---------- build ----------
+const cartsEl = document.getElementById('carts');
+const playBtn = document.getElementById('play');
+const muteBtn = document.getElementById('mute');
+let selected = null, launching = false;
+
+GAMES.forEach((g, i) => {
+  const b = document.createElement('button');
+  b.className = 'cart' + (g.soon ? ' soon' : '') + (g.isNew ? ' new' : '');
+  b.style.setProperty('--c', g.color);
+  b.setAttribute('role', 'listitem');
+  b.setAttribute('aria-label', g.name + (g.soon ? ' (coming soon)' : ''));
+  b.dataset.i = i;
+  b.innerHTML = `<span class="shell"><span class="sticker"><svg viewBox="0 0 160 120" aria-hidden="true">${ART[g.art]}</svg></span><span class="title">${g.name}</span><span class="grip"><i></i><i></i><i></i><i></i><i></i></span></span>`;
+  b.addEventListener('click', () => tapCart(i));
+  cartsEl.appendChild(b);
+});
+const cartEls = [...cartsEl.children];
+
+function select(i, speak) {
+  selected = i;
+  cartEls.forEach((el, j) => el.classList.toggle('sel', j === i));
+  const g = GAMES[i];
+  playBtn.classList.toggle('ready', !g.soon);
+  if (speak) say(g.soon ? `${g.name}. Coming soon!` : g.name);
+}
+function tapCart(i) {
+  if (launching) return;
+  const g = GAMES[i];
+  if (g.soon) { sfx.nope(); select(i, true); return; }
+  if (selected === i) { launch(); return; }   // second tap = play
+  sfx.pick(); select(i, true);
+}
+function launch() {
+  if (launching || selected == null) { if (selected == null) { sfx.nope(); say('Pick a game!'); } return; }
+  const g = GAMES[selected];
+  if (g.soon) { sfx.nope(); say('Coming soon!'); return; }
+  launching = true;
+  sfx.insert(); say(`Let's play ${g.name}!`);
+  cartEls[selected].classList.add('inserting');
+  setTimeout(() => document.getElementById('flash').classList.add('on'), 650);
+  setTimeout(() => { window.location.href = g.url; }, 950);
+}
+playBtn.addEventListener('click', launch);
+
+function drawMute() {
+  muteBtn.innerHTML = muted
+    ? '<svg viewBox="0 0 40 40"><path d="M4 15h8l10-9v28l-10-9H4z" fill="#1d1b2f"/><path d="M27 14l10 12M37 14L27 26" stroke="#1d1b2f" stroke-width="4" stroke-linecap="round"/></svg>'
+    : '<svg viewBox="0 0 40 40"><path d="M4 15h8l10-9v28l-10-9H4z" fill="#1d1b2f"/><path d="M27 13a10 10 0 0 1 0 14M31 8a16 16 0 0 1 0 24" fill="none" stroke="#1d1b2f" stroke-width="4" stroke-linecap="round"/></svg>';
+}
+muteBtn.addEventListener('click', () => {
+  muted = !muted; drawMute();
+  try { localStorage.setItem('everett-console-muted', muted ? '1' : '0'); } catch (e) {}
+  if (!muted) sfx.pick(); else try { speechSynthesis.cancel(); } catch (e) {}
+});
+drawMute();
+
+// keyboard: arrows to choose, Enter to play
+document.addEventListener('keydown', (e) => {
+  if (launching) return;
+  const cols = Math.max(1, Math.round(cartsEl.clientWidth / cartEls[0].offsetWidth));
+  const cur = selected == null ? -1 : selected;
+  let n = null;
+  if (e.key === 'ArrowRight') n = cur + 1;
+  else if (e.key === 'ArrowLeft') n = cur - 1;
+  else if (e.key === 'ArrowDown') n = cur < 0 ? 0 : cur + cols;
+  else if (e.key === 'ArrowUp') n = cur - cols;
+  else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); launch(); return; }
+  if (n != null) { e.preventDefault(); n = Math.max(0, Math.min(GAMES.length - 1, n)); sfx.pick(); select(n, true); cartEls[n].focus({ preventScroll: false }); }
+});
+
+// coming back with the browser Back button: undo the launch animation
+window.addEventListener('pageshow', () => {
+  launching = false;
+  document.getElementById('flash').classList.remove('on');
+  cartEls.forEach((el) => el.classList.remove('inserting'));
+});
+</script>
+</body>
+</html>
